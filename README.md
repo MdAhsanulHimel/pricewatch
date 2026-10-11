@@ -1,7 +1,7 @@
 # Price Watch
 
-[![Tests](https://github.com/MdAhsanulHimel/price-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/MdAhsanulHimel/price-watch/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/MdAhsanulHimel/price-watch)](https://github.com/MdAhsanulHimel/price-watch/releases/latest)
+[![Tests](https://github.com/MdAhsanulHimel/pricewatch/actions/workflows/ci.yml/badge.svg)](https://github.com/MdAhsanulHimel/pricewatch/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/MdAhsanulHimel/pricewatch)](https://github.com/MdAhsanulHimel/pricewatch/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Track the price of anything on any website. Point at the price, click it, and
@@ -48,8 +48,8 @@ needing a built-in list of supported sites.
 Price Watch is not in the Edge or Chrome store yet, so you load it yourself.
 It takes a minute and stays installed.
 
-1. Download **`price-watch-vX.Y.Z.zip`** from the
-   [latest release](https://github.com/MdAhsanulHimel/price-watch/releases/latest).
+1. Download **`pricewatch-vX.Y.Z.zip`** from the
+   [latest release](https://github.com/MdAhsanulHimel/pricewatch/releases/latest).
 2. Unzip it into a folder that can stay where it is, for example
    `C:\Tools\PriceWatch`. **Don't delete or move that folder later**: the
    browser loads the extension from it every time it starts.
@@ -127,7 +127,7 @@ Each alert is sent as a `POST` with a JSON body like this:
 
 ```json
 {
-  "source": "price-watch",
+  "source": "pricewatch",
   "text": "Price dropped: Lenovo IdeaPad Slim 3\n68,900৳ to 64,500৳  (DOWN 6.4%)\nhttps://...",
   "content": "same text, for Discord",
   "events": [
@@ -250,13 +250,13 @@ and webhook address are never included in exported backups.
 ## Development
 
 ```bash
-git clone https://github.com/MdAhsanulHimel/price-watch.git
-cd price-watch
+git clone https://github.com/MdAhsanulHimel/pricewatch.git
+cd pricewatch
 npm install
 npx playwright install chromium
 npm run test:unit     # parsing, selectors, stock detection, CSV
 npm run test:e2e      # loads the real extension in Chromium and drives it
-npm run package       # builds dist/price-watch-vX.Y.Z.zip
+npm run package       # builds dist/pricewatch-vX.Y.Z.zip
 ```
 
 The end-to-end test serves fake shops on localhost (one server-rendered, one
