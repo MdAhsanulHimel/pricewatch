@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Price Watch settings</title>
+<style>
+  :root { --ink:#16233a; --muted:#66788f; --line:#e3e9f0; --accent:#12b886; --chip:#eef2f7; }
+  * { box-sizing: border-box; }
+  body {
+    font: 14px/1.6 "Segoe UI", system-ui, sans-serif; color: var(--ink);
+    max-width: 720px; margin: 0 auto; padding: 28px 22px 60px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 26px; }
+  section { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .row:last-child { margin-bottom: 0; }
+  label.inline { display: flex; align-items: center; gap: 8px; }
+  select, input[type=number] {
+    font: inherit; padding: 6px 9px; border: 1px solid #c9d4e2; border-radius: 6px;
+  }
+  button {
+    font: inherit; border: 0; border-radius: 7px; padding: 8px 14px;
+    cursor: pointer; background: var(--chip); color: #33465e;
+  }
+  button.primary { background: var(--accent); color: #fff; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
+  .ok { color: #0b7a4b; font-size: 13px; margin-left: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#e6edf3; --muted:#8b98a9; --line:#2a323d; --chip:#232b36; }
+    body { background: #161b22; }
+    select, input[type=number] { background:#1f262f; color:var(--ink); border-color:#39424f; }
+    button { color:#cbd6e2; }
+  }
+</style>
+</head>
+<body>
+  <h1>Price Watch settings</h1>
+  <p class="sub">Checks run silently in the background while Edge is open. Nothing opens a window or takes focus.</p>
+
+  <section>
+    <h2>Schedule</h2>
+    <div class="row">
+      <label class="inline">Check every
+        <select id="interval">
+          <option value="15">15 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+          <option value="180">3 hours</option>
+          <option value="360">6 hours</option>
+          <option value="720">12 hours</option>
+          <option value="1440">1 day</option>
+        </select>
+      </label>
+    </div>
+    <p class="hint">
+      Edge enforces a 15 minute floor on extension timers. If the browser was
+      closed for longer than one interval, a catch-up check runs shortly after
+      you next start it.
+    </p>
+  </section>
+
+  <section>
+    <h2>Alerts</h2>
+    <div class="row"><label class="inline"><input type="checkbox" id="notify"> Windows notification when a value changes</label></div>
+    <div class="row"><label class="inline"><input type="checkbox" id="sound"> Play a sound with notifications</label></div>
+    <div class="row"><label class="inline"><input type="checkbox" id="badge"> Count of unseen changes on the toolbar icon</label></div>
+    <div class="row">
+      <label class="inline">Keep
+        <input type="number" id="historyLimit" min="20" max="2000" step="10" style="width:90px">
+        readings of history per item
+      </label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Hard-to-read sites</h2>
+    <div class="row"><label class="inline"><input type="checkbox" id="tabFallback"> Allow a muted background tab as a last resort</label></div>
+    <p class="hint">
+      Off by default. Pages are normally read by a plain download, or rendered
+      in a hidden frame inside the extension, which never shows on screen. A few
+      sites refuse both. With this on, those sites are opened in an inactive,
+      muted tab for a few seconds, only when you have been away from the
+      keyboard for two minutes, or when you press Check now yourself. It never
+      opens a new window.
+    </p>
+  </section>
+
+  <section>
+    <h2>Your items</h2>
+    <table id="items"><thead>
+      <tr><th>Item</th><th>Site</th><th class="num">Current</th><th>Mode</th><th class="num">Readings</th></tr>
+    </thead><tbody></tbody></table>
+    <p class="hint" id="noitems" hidden>Nothing tracked yet.</p>
+  </section>
+
+  <section>
+    <h2>Backup</h2>
+    <div class="row">
+      <button id="export">Export to JSON</button>
+      <button id="importBtn">Import from JSON</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <span class="ok" id="msg"></span>
+    </div>
+    <p class="hint">
+      Import replaces your current list. Site permissions are not part of the
+      backup, so after importing on a new PC, open the popup and press
+      Re-authorise on each item.
+    </p>
+  </section>
+
+  <script src="../lib/pw-core.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
