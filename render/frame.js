@@ -56,7 +56,7 @@
   function tick() {
     hush();
     try {
-      last = globalThis.PW.resolve(document, job.selectors);
+      last = globalThis.PW.read(document, job.selectors);
     } catch (e) {
       last = { ok: false, reason: "Read failed: " + e.message };
     }

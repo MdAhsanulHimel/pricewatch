@@ -34,17 +34,35 @@ const eq = (label, got, want) => {
 
 let staticPrice = "81,000৳";
 let spaPrice = "13,200৳";
+let staticStock = "In Stock";
+let hidePrice = false;
+const hookBodies = [];
 
 const server = http.createServer((req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
+  if (req.url.startsWith("/hook") && req.method === "POST") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      try {
+        hookBodies.push(JSON.parse(body));
+      } catch (e) {
+        hookBodies.push({ bad: body });
+      }
+      res.end("ok");
+    });
+    return;
+  }
   if (req.url.startsWith("/static")) {
     res.end(`<!doctype html><html><head><title>Laptop | FakeShop</title></head>
       <body><div id="content"><div class="product" data-product-id="p-77">
       <h1 class="product-name">Test Laptop 15 inch</h1>
       <table class="product-info-table"><tbody><tr>
         <td class="product-info-label">Price</td>
-        <td class="product-info-data product-price"><ins id="price">${staticPrice}</ins><del>86,000৳</del></td>
+        <td class="product-info-data product-price">${hidePrice ? "" : `<ins id="price">${staticPrice}</ins><del>86,000৳</del>`}</td>
+      </tr><tr><td class="product-info-label">Status</td>
+        <td class="product-info-data product-status">${staticStock}</td>
       </tr></tbody></table></div></div></body></html>`);
   } else if (req.url.startsWith("/spa")) {
     res.setHeader("X-Frame-Options", "DENY");
@@ -287,7 +305,8 @@ async function main() {
     eq("two rows in the popup", await popup.locator(".item").count(), 2);
     const firstLabel = await popup.locator(".item .label").first().textContent();
     eq("row has a label", firstLabel.length > 0, true);
-    await popup.screenshot({ path: path.join(ROOT, "popup-shot.png"), fullPage: true });
+    fs.mkdirSync(path.join(ROOT, "test", "output"), { recursive: true });
+    await popup.screenshot({ path: path.join(ROOT, "test", "output", "popup-shot.png"), fullPage: true });
     console.log("        popup screenshot saved");
 
     console.log("\n8. settings round trip");
@@ -297,6 +316,175 @@ async function main() {
       return a ? a.periodInMinutes : null;
     });
     eq("alarm rescheduled", alarm, 180);
+
+    // ------------------------------------------------------------------
+    const getItems = () => swEval(context, async () => (await chrome.storage.local.get("items")).items);
+    const getStatic = async () => (await getItems()).find((i) => i.host === "127.0.0.1" && !i.url.includes("/spa"));
+    const csvRows = async () => {
+      const r = await call({ type: "exportCsv" });
+      return r.csv.replace(/^﻿/, "").trim().split("\r\n");
+    };
+
+    console.log("\n9. stock watching and the price database");
+    let st = await getStatic();
+    await call({ type: "updateItem", id: st.id, patch: { url: `${BASE}/static`, failCount: 0, error: null } });
+    await call({
+      type: "saveSettings",
+      settings: { webhook: { enabled: true, url: `${BASE}/hook` }, intervalMinutes: 180 },
+    });
+    res = await call({ type: "checkNow", ids: [st.id] });
+    eq("restored item reads again", [res.outcomes[0].error, res.outcomes[0].newValue], [null, 68900]);
+    st = await getStatic();
+    eq("stock detected from the page", st.stock, "in");
+    let rows = await csvRows();
+    eq("database header", rows[0], "Product name,Product Link,Date,Price,Stock");
+    // two first readings + two changes on each item, nothing for no-change checks
+    eq("database only holds meaningful rows", rows.length - 1, 6);
+
+    staticStock = "Out Of Stock";
+    hidePrice = true;
+    res = await call({ type: "checkNow", ids: [st.id] });
+    eq("out of stock with the price hidden is not an error", res.outcomes[0].error, null);
+    eq("stock change reported", res.outcomes[0].stockChanged, true);
+    st = await getStatic();
+    eq("item marked out of stock, last price kept", [st.stock, st.lastValue], ["out", 68900]);
+    rows = await csvRows();
+    eq("database row for going out of stock", rows[rows.length - 1].split(",").slice(-2), ["", "Out of stock"]);
+
+    res = await call({ type: "checkNow", ids: [st.id] });
+    eq("no new row while nothing changes", (await csvRows()).length, rows.length);
+
+    staticStock = "In Stock";
+    hidePrice = false;
+    staticPrice = "66,000৳";
+    res = await call({ type: "checkNow", ids: [st.id] });
+    eq("back in stock and a new price, both seen", [res.outcomes[0].stockChanged, res.outcomes[0].changed], [true, true]);
+    rows = await csvRows();
+    eq("one row for that check", rows[rows.length - 1].split(",").slice(-2), ["66000", "In stock"]);
+    await sleep(300);
+    eq("webhook got the stock events", hookBodies.flatMap((b) => b.events.map((e) => e.type)).filter((t) => t === "stock").length, 2);
+    eq("webhook body has Slack and Discord text", typeof hookBodies[0].text + typeof hookBodies[0].content, "stringstring");
+
+    console.log("\n10. smarter alerts");
+    // The target from step 4 (alert below 70,000) would fire on its own here.
+    await call({ type: "updateItem", id: st.id, patch: { target: { enabled: false, direction: "below", value: null } } });
+    await call({ type: "saveSettings", settings: { minChangePct: 5, alertMode: "drops" } });
+    let sent = hookBodies.length;
+    staticPrice = "65,500৳"; // under 1%
+    await call({ type: "checkNow", ids: [st.id] });
+    staticPrice = "70,000৳"; // a rise
+    await call({ type: "checkNow", ids: [st.id] });
+    await sleep(300);
+    eq("small moves and rises are not alerted", hookBodies.length, sent);
+    eq("but they are still in the database", (await csvRows()).length, rows.length + 2);
+    staticPrice = "60,000৳"; // a 14% drop
+    await call({ type: "checkNow", ids: [st.id] });
+    await sleep(300);
+    eq("a big drop is alerted", hookBodies.length, sent + 1);
+    await call({ type: "saveSettings", settings: { minChangePct: 0, alertMode: "all" } });
+
+    console.log("\n11. quiet hours hold alerts and send one summary");
+    const hhmm = (d) => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    const now = new Date();
+    await call({
+      type: "saveSettings",
+      settings: {
+        quietHours: {
+          enabled: true,
+          start: hhmm(new Date(now - 3600e3)),
+          end: hhmm(new Date(+now + 3600e3)),
+        },
+      },
+    });
+    sent = hookBodies.length;
+    staticPrice = "58,000৳";
+    await call({ type: "checkNow", ids: [st.id] });
+    await sleep(300);
+    eq("nothing sent during quiet hours", hookBodies.length, sent);
+    eq("alert held for later", (await swEval(context, async () => (await chrome.storage.local.get("held")).held.length)), 1);
+    eq("wake-up set for the end of quiet hours", !!(await swEval(context, async () => chrome.alarms.get("pw-quiet-end"))), true);
+    await call({ type: "saveSettings", settings: { quietHours: { enabled: false } } });
+    await sleep(300);
+    eq("summary sent when quiet hours end", hookBodies.length, sent + 1);
+    eq("held list emptied", (await swEval(context, async () => (await chrome.storage.local.get("held")).held.length)), 0);
+
+    console.log("\n12. a failing page backs off, then asks for help once");
+    await call({ type: "updateItem", id: st.id, patch: { url: `${BASE}/gone` } });
+    for (let i = 0; i < 6; i++) await call({ type: "checkNow", ids: [st.id] });
+    st = await getStatic();
+    eq("six failures counted", st.failCount, 6);
+    const eff = await swEval(context, async (id) => {
+      const { items, settings } = await chrome.storage.local.get(["items", "settings"]);
+      return PW.effectiveInterval(items.find((i) => i.id === id), settings);
+    }, st.id);
+    eq("checked far less often now", eff, 1440);
+    res = await call({ type: "checkNow", manual: false });
+    eq("a scheduled run skips items that are not due", res.outcomes.length, 0);
+    await sleep(300);
+    eq("one 'needs attention' alert", hookBodies.flatMap((b) => b.events.map((e) => e.type)).filter((t) => t === "failing").length, 1);
+    await call({ type: "checkNow", ids: [st.id] });
+    await sleep(300);
+    eq("not repeated", hookBodies.flatMap((b) => b.events.map((e) => e.type)).filter((t) => t === "failing").length, 1);
+    await call({ type: "updateItem", id: st.id, patch: { url: `${BASE}/static` } });
+    await call({ type: "checkNow", ids: [st.id] });
+    st = await getStatic();
+    eq("recovers fully on success", [st.failCount, st.error], [0, null]);
+
+    console.log("\n13. per-item interval");
+    const spaId = (await getItems()).find((i) => i.url.includes("/spa")).id;
+    await call({ type: "updateItem", id: spaId, patch: { intervalMinutes: 30 } });
+    eq("alarm ticks at the shortest interval", await swEval(context, async () => (await chrome.alarms.get("pw-check")).periodInMinutes), 30);
+    await call({ type: "updateItem", id: spaId, patch: { intervalMinutes: null } });
+    eq("and back", await swEval(context, async () => (await chrome.alarms.get("pw-check")).periodInMinutes), 180);
+
+    console.log("\n14. re-pick keeps the history");
+    const histBefore = st.history.length;
+    staticPrice = "57,000৳";
+    call({ type: "repick", id: st.id });
+    let rp = null;
+    for (let i = 0; i < 40 && !rp; i++) {
+      await sleep(250);
+      for (const p of context.pages()) {
+        if (p.url().startsWith(`${BASE}/static`) && (await p.locator("#pw-picker-host").count())) rp = p;
+      }
+    }
+    eq("picker opened on the item's page", !!rp, true);
+    await rp.hover("#price");
+    await sleep(150);
+    await rp.click("#price");
+    await sleep(200);
+    const title = await rp.evaluate(() =>
+      document.getElementById("pw-picker-host").shadowRoot.getElementById("ctitle").textContent);
+    eq("picker knows it is a re-pick", title, "Use this as the new price location?");
+    await rp.evaluate(() => document.getElementById("pw-picker-host").shadowRoot.getElementById("save").click());
+    await sleep(600);
+    const all = await getItems();
+    st = all.find((i) => i.id === st.id);
+    eq("no duplicate item", all.length, 2);
+    eq("history kept and extended", st.history.length, histBefore + 1);
+    eq("new reading taken", st.lastValue, 57000);
+    eq("re-pick recorded", typeof st.repickedAt, "number");
+
+    console.log("\n15. Telegram alert format");
+    await swEval(context, () => {
+      globalThis.__tg = [];
+      const real = globalThis.fetch;
+      globalThis.fetch = async (url, opts) => {
+        if (String(url).startsWith("https://api.telegram.org/")) {
+          globalThis.__tg.push({ url: String(url), body: JSON.parse(opts.body) });
+          return new Response('{"ok":true}', { status: 200 });
+        }
+        return real(url, opts);
+      };
+    });
+    await call({ type: "saveSettings", settings: { telegram: { enabled: true, token: "123:ABC-def", chatId: "42" } } });
+    res = await call({ type: "testRemote" });
+    const tg = await swEval(context, () => globalThis.__tg);
+    eq("test message reported as sent", res.status.telegram.ok, true);
+    eq("sent to the bot's sendMessage", tg[0] && tg[0].url, "https://api.telegram.org/bot123:ABC-def/sendMessage");
+    eq("to your chat", tg[0] && tg[0].body.chat_id, "42");
+    const backup = await swEval(context, async () => (await chrome.storage.local.get("settings")).settings.telegram.token);
+    eq("token stored locally", backup, "123:ABC-def");
   } finally {
     await context.close();
     server.close();

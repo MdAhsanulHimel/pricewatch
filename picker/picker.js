@@ -75,11 +75,11 @@
     <div class="box"></div>
     <div class="tip"></div>
     <div class="bar">
-      <span>Click the price you want to watch. <b>Esc</b> to cancel.</span>
+      <span id="bartext">Click the price you want to watch. <b>Esc</b> to cancel.</span>
       <button id="cancel">Cancel</button>
     </div>
     <div class="card">
-      <h3>Watch this value?</h3>
+      <h3 id="ctitle">Watch this value?</h3>
       <div class="warn" id="warn"></div>
       <div class="val" id="cval"></div>
       <div class="raw" id="craw"></div>
@@ -174,7 +174,12 @@
         ? "That element holds a lot of text. A tighter element is more reliable."
         : "";
     shadow.getElementById("save").disabled = value === null;
-    shadow.getElementById("lab").value = guessLabel(el);
+    const repick = globalThis.__pwRepick;
+    shadow.getElementById("ctitle").textContent = repick
+      ? "Use this as the new price location?"
+      : "Watch this value?";
+    shadow.getElementById("save").textContent = repick ? "Update item" : "Watch it";
+    shadow.getElementById("lab").value = repick ? repick.label || guessLabel(el) : guessLabel(el);
     shadow.getElementById("lab").focus();
     shadow.getElementById("lab").select();
   }
@@ -202,6 +207,7 @@
     document.removeEventListener("keydown", onKey, true);
     host.remove();
     globalThis.__pwPickerActive = false;
+    globalThis.__pwRepick = null;
   }
 
   function onKey(e) {
@@ -219,9 +225,12 @@
     const text = (el.textContent || "").trim().replace(/\s+/g, " ");
     const value = PW.parsePrice(text);
     if (value === null) return;
+    const repick = globalThis.__pwRepick;
     chrome.runtime.sendMessage(
       {
-        type: "addItem",
+        type: repick ? "repickItem" : "addItem",
+        id: repick ? repick.id : undefined,
+        stock: PW.detectStock(document, el).stock,
         url: location.href,
         pageTitle: document.title,
         label: shadow.getElementById("lab").value.trim() || document.title,
@@ -232,7 +241,7 @@
       },
       () => {
         const ok = document.createElement("div");
-        ok.textContent = "Added to Price Watch";
+        ok.textContent = repick ? "Price location updated, history kept" : "Added to Price Watch";
         ok.style.cssText =
           "all:initial;position:fixed;top:16px;left:50%;transform:translateX(-50%);" +
           "z-index:2147483647;background:#12b886;color:#fff;padding:10px 18px;" +
@@ -246,6 +255,10 @@
   });
 
   globalThis.__pwPickerRestart = unfreeze;
+  if (globalThis.__pwRepick) {
+    shadow.getElementById("bartext").innerHTML =
+      "Re-pick: click the price for this item. History is kept. <b>Esc</b> to cancel.";
+  }
 
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);

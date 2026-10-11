@@ -1,193 +1,286 @@
 # Price Watch
 
-A Microsoft Edge extension that watches a price you point at, on any website,
-and tells you when it moves.
+[![Tests](https://github.com/MdAhsanulHimel/price-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/MdAhsanulHimel/price-watch/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/MdAhsanulHimel/price-watch)](https://github.com/MdAhsanulHimel/price-watch/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-You open a product page, press one button, and click the price. Price Watch
-remembers where that number lives, re-reads it on a schedule, and raises a
-Windows notification when it changes or hits a target you set.
+**Track the price of anything on any website. Point at the price, click it, and
+get told when it drops, rises, sells out or comes back in stock.**
 
----
+A small Microsoft Edge and Google Chrome extension. No account, no server, no
+tracking. It works on any shop (Star Tech, Ryans, Daraz, Amazon, AliExpress,
+your local store) because you show it where the price is, instead of it
+needing a built-in list of supported sites.
 
-## 1. Install it in Edge
+<p align="center">
+  <img src="docs/popup.png" alt="The Price Watch popup with three tracked items, stock badges, price changes and sparklines" width="400">
+</p>
 
-There is no store listing, so it loads as an unpacked extension. This is a
-supported, permanent way to run your own extensions.
+## Features
 
-1. Unzip this folder somewhere it can stay, for example
-   `C:\Tools\PriceWatch`. **Do not delete or move it afterwards**, Edge loads
-   the extension from that folder every time it starts.
+- **Point and click.** Open a product page, press *Track a price on this page*,
+  click the price. That's it.
+- **Works when sites change.** It remembers several ways to find the price
+  (CSS path, nearby anchors, `itemprop`, XPath, class scan), so a redesign
+  rarely breaks it. If one does, **Re-pick** the price; the history stays.
+- **Stock watching.** Alerts when an item goes out of stock or comes back,
+  read from the shop's structured data or from words like "Out of stock",
+  "Sold out" or "স্টকে নেই" next to the price.
+- **Alerts where you want them.** Windows/macOS notifications, plus optional
+  **Telegram** and **webhook** (Slack, Discord, ntfy, Home Assistant, n8n,
+  Zapier).
+- **Only the alerts that matter.** Drops only, ignore moves under X%, target
+  prices ("tell me when it's at or below 65,000"), and quiet hours that save
+  everything for one morning summary.
+- **Price database you can open in Excel.** A CSV with Product name, Product
+  Link, Date, Price and Stock. A row is added only when something actually
+  changes, so it stays small.
+- **Silent and fast.** Checks run in the background without ever opening a
+  window or stealing focus. Pages that need JavaScript are rendered in a
+  hidden frame inside the extension. Several items are checked in parallel.
+- **Looks after itself.** Per-item check intervals, and pages that keep
+  failing are checked less often until they recover, with one heads-up alert.
+- **Private.** Everything stays in your browser. Site access is asked for one
+  site at a time.
 
-   *Updating from an older version:* replace the files in that same folder,
-   then press **Reload** on the Price Watch card in `edge://extensions`. Your
-   items and history are kept.
-2. Open Edge and go to `edge://extensions`.
-3. Turn on **Developer mode** (toggle on the left).
-4. Click **Load unpacked** and choose the folder that contains
-   `manifest.json`.
-5. Pin the icon: click the puzzle-piece in the toolbar, then the eye or pin
-   next to Price Watch.
+## Install
 
-The same folder also works in Chrome via `chrome://extensions`, unchanged.
+Price Watch is not in the Edge or Chrome store yet, so you load it yourself.
+It takes a minute and stays installed.
 
----
+1. Download **`price-watch-vX.Y.Z.zip`** from the
+   [latest release](https://github.com/MdAhsanulHimel/price-watch/releases/latest).
+2. Unzip it into a folder that can stay where it is, for example
+   `C:\Tools\PriceWatch`. **Don't delete or move that folder later**: the
+   browser loads the extension from it every time it starts.
+3. Open `edge://extensions` (Edge) or `chrome://extensions` (Chrome).
+4. Turn on **Developer mode**.
+5. Click **Load unpacked** and choose the folder that contains `manifest.json`.
+6. Pin it: click the puzzle-piece icon in the toolbar, then the pin or eye next
+   to Price Watch.
 
-## 2. Track your first price
+**Updating:** unzip the new release over the same folder, then press
+**Reload** on the Price Watch card in `edge://extensions`. Your items, history
+and settings are kept.
 
-1. Open a product page, any shop, `startech.com.bd`, Daraz, Amazon, anything.
-2. Click the Price Watch icon, then **Track a price on this page**.
-3. Edge asks whether Price Watch may read that site. Say yes.
-   *The first time on a new site the popup sometimes closes when that prompt
-   appears. Just click the button again, the permission is already granted and
-   it goes straight through.*
-4. The page dims into picking mode. Move the mouse: whatever is under the
-   cursor is outlined in green and the detected number is shown next to the
-   pointer. Click the price.
-5. Confirm the value, give the item a name, press **Watch it**.
+> Prefer the source? `git clone` this repo and load the cloned folder the same
+> way. There is no build step.
 
-`Esc` cancels picking at any time.
+## How to use it
 
-**Pick tightly.** Click the element that holds the price itself, not a big
-block that happens to contain it. The confirm card warns you when the
-selection carries a lot of extra text.
+### Track a price
 
----
+1. Open a product page and click the Price Watch icon.
+2. Press **Track a price on this page**.
+3. The first time on a new site, the browser asks whether Price Watch may read
+   that site. Say yes. (If the popup closes when the prompt appears, just press
+   the button again.)
+4. Move the mouse over the page. Whatever is under the pointer is outlined and
+   the number it found is shown. Click the price.
+5. Check the value and name, then press **Watch it**. `Esc` cancels.
 
-## 3. What happens after that
+Click the element that holds the price itself, not a large box around it. The
+confirm card warns you when your selection has a lot of extra text.
 
-Every 60 minutes by default, Price Watch re-reads each tracked page. In the
-popup each item shows the current value, the size of the last move, a
-sparkline of its history, and when it was last checked.
+### In the popup
 
-- **Windows notification** whenever a value changes. Click it to open the page.
-- **Target alerts.** Open an item's menu (the ⋮ or click its name) and set
-  "alert when at or below 70000". It fires once when the condition is met, and
-  arms itself again after the price goes back out of range.
-- **Badge count** on the toolbar icon showing unseen changes. Opening the
-  popup clears it.
-- **Pause** an item to keep its history without checking it.
+Each item shows its current price, stock status, the last change, a sparkline
+and when it was last checked. Click an item's name (or the **⋮**) for more:
 
-Settings, backup and the full item table live behind the gear icon.
+| Option | What it does |
+|---|---|
+| **Alert when at or below / above** | A target price. Fires once when reached, and re-arms after the price leaves the range. |
+| **Check every** | This item's own interval. *default* uses the one in Settings. |
+| **Check now** | Reads the page right away. |
+| **Re-pick** | Opens the page and lets you click the price again. Use it when an item shows an error or a "loose match" warning. History is kept. |
+| **Open page / Pause / Remove** | As named. Pausing keeps the history. |
+| **Re-authorise** | Appears when the site permission is missing, e.g. after importing a backup on a new PC. |
 
----
+The **⇩** button at the top downloads the price database. The **⚙** opens
+Settings. The number on the toolbar icon counts changes you haven't seen yet.
 
-## 4. How a page gets read
+### Settings
 
-Checks are silent. Price Watch never opens a window, never takes focus and
-never interrupts what you are doing. Three methods, tried cheapest first:
+<p align="center">
+  <img src="docs/options.png" alt="Price Watch settings: alert filters, quiet hours, Telegram and webhook" width="640">
+</p>
 
-**Fetch.** The extension downloads the page in the background and reads the
-price out of the HTML. Fast and invisible. This works for server-rendered
-shops, Star Tech among them.
+- **Schedule:** how often to check (15 minutes to 1 day).
+- **Alerts:** notifications, sound (off by default), badge, *all changes* or
+  *drops only*, minimum change in %, stock alerts, quiet hours.
+- **Phone and chat alerts:** Telegram and webhook, with test buttons.
+- **Hard-to-read sites:** the optional background-tab fallback (see below).
+- **Price database:** download or clear the CSV.
+- **Backup:** export and import everything as JSON.
 
-**Hidden render.** If the price is not in the raw HTML, because the site
-paints it with JavaScript, the page is loaded inside a sandboxed, invisible
-frame in the extension's own offscreen document, given a few seconds to
-render, read and thrown away. Nothing appears on screen, in the taskbar or in
-your tab strip. The frame cannot open pop-ups, show dialogs or play sound.
+### Get alerts on your phone with Telegram
 
-**Background tab (off by default).** A few sites refuse both. If you turn this
-on in settings, those pages are opened in a muted, inactive tab in an existing
-window, only while you have been away from the keyboard for two minutes or
-when you press Check now yourself. It never creates a new window.
+1. In Telegram, message [@BotFather](https://t.me/BotFather), send `/newbot`,
+   follow the prompts and copy the **token**.
+2. Open your new bot and send it any message, for example `hi`.
+3. In Price Watch Settings, paste the token and press **Find my chat ID**.
+4. Press **Send test**. You should get a message from your bot.
 
-Every item starts on `auto`. The first time one needs rendering it is
-remembered, so later checks skip the wasted download. The popup labels those
-items "rendered".
+### Webhook
 
-Up to four items are checked in parallel, and every read has a time limit, so
-one slow site cannot hold up the rest.
+Each alert is sent as a `POST` with a JSON body like this:
 
-### What changed in 1.1.0
+```json
+{
+  "source": "price-watch",
+  "text": "Price dropped: Lenovo IdeaPad Slim 3\n68,900৳ to 64,500৳  (DOWN 6.4%)\nhttps://...",
+  "content": "same text, for Discord",
+  "events": [
+    {
+      "type": "price",
+      "title": "Price dropped",
+      "product": "Lenovo IdeaPad Slim 3",
+      "url": "https://www.startech.com.bd/...",
+      "oldPrice": 68900,
+      "newPrice": 64500,
+      "currency": "৳",
+      "stock": "in",
+      "time": "2026-10-11T08:30:00.000Z"
+    }
+  ]
+}
+```
 
-- Removed the minimised "worker window". In 1.0 it could pop Edge up over
-  other apps, especially when Edge was running in the background with no
-  window open. It is closed automatically the first time 1.1.0 starts.
-- New hidden renderer for JavaScript pages, including sites that block
-  framing.
-- Checks run in parallel with timeouts, so a full check is much faster.
-- Notifications are silent by default (sound can be turned on in settings).
-- Fixed: every browser start used to reset the timer and fire a check within
-  a minute; the catch-up check could be lost when the worker went to sleep;
-  parallel edits could overwrite each other's data.
+`type` is one of `price`, `stock`, `target` or `failing`. `text` works with
+Slack incoming webhooks and `content` with Discord webhooks as they are.
 
-## 5. When a site redesigns
+### The price database (CSV)
 
-The picker does not store one brittle CSS path. It records several ways to
-find the element and tries them in order:
+```csv
+Product name,Product Link,Date,Price,Stock
+Lenovo IdeaPad Slim 3,https://www.startech.com.bd/...,2026-10-01 10:15,68900,In stock
+Lenovo IdeaPad Slim 3,https://www.startech.com.bd/...,2026-10-06 16:00,66000,In stock
+Lenovo IdeaPad Slim 3,https://www.startech.com.bd/...,2026-10-08 09:00,,Out of stock
+Lenovo IdeaPad Slim 3,https://www.startech.com.bd/...,2026-10-10 11:45,64500,In stock
+```
+
+A row is written for an item's first reading, every price change, and every
+switch between in stock and out of stock. Checks where nothing changed add
+nothing. *Price* is empty when the shop hides the price while the item is out
+of stock. Dates are in your computer's local time. The newest 20,000 rows are
+kept.
+
+## How it works
+
+Every check tries the cheapest method first:
+
+1. **Fetch.** Download the page's HTML and read the price from it. Fast and
+   invisible. Works for most shops that build pages on the server.
+2. **Hidden render.** If the price is drawn by JavaScript, the page is loaded
+   in a sandboxed, invisible frame inside the extension's own offscreen
+   document, given a few seconds, read, and thrown away. It never appears on
+   screen, in the taskbar or in your tabs, and can't open pop-ups, show
+   dialogs or play sound. Price Watch remembers which items need this.
+3. **Background tab (optional, off by default).** For the rare site that
+   refuses both, you can allow a muted, inactive tab in an existing window.
+   It only runs while you've been away from the keyboard for two minutes, or
+   when you press *Check now*, and it never opens a new window.
+
+To find the price again on a later visit, the picker stores several
+selectors and tries them in order:
 
 1. the exact CSS path
-2. a nearby stable anchor (an element with an `id` or a `data-product-id`)
-   plus a path relative to it
-3. the `itemprop` attribute, which shops tend to preserve
+2. a nearby stable anchor (an `id` or a `data-product-id`) plus a relative path
+3. the `itemprop` attribute
 4. an XPath
-5. a scan for the same tag and class combination, accepted only if exactly one
-   candidate on the page looks like a price
-6. as a last resort, the one number on the page in the right ballpark
+5. the same tag and classes, accepted only if exactly one candidate looks like a price
+6. as a last resort, the single number on the page in the right range
 
-Steps 1 to 5 are structural, so a reading from them is trusted. Step 6 is a
-guess: the reading is used but flagged in the popup as a loose match, with a
-note telling you to pick the price again. If two candidates are equally
-plausible, Price Watch reports a failure rather than inventing an answer.
+1 to 5 are trusted. 6 is used but marked as a *loose match* in the popup so
+you know to re-pick. If two numbers are equally plausible, Price Watch reports
+an error instead of guessing.
 
----
+Prices are parsed across formats: `81,000৳`, `$1,299.00`, `1.299,00 €`,
+`₹1,23,456`, Bangla digits `৮১,০০০`, and more.
 
-## 6. Limits worth knowing before you rely on it
+## Permissions
 
-- **Edge must be running.** Extension timers do not fire when the browser is
-  closed. If Edge was shut for longer than one interval, a catch-up check runs
-  shortly after you next open it.
-- **15 minutes is the floor.** Edge will not run extension alarms more often.
-- **Sites can block it.** Aggressive bot protection may serve a challenge page
-  to the background fetch. The hidden renderer often gets through; for the
-  rest you can allow the background tab fallback in settings.
-- **Login-gated prices** usually work because your session cookies are sent,
-  but a site that logs you out often will produce read errors.
-- **Edge running in the background.** If Edge's "Continue running background
-  extensions and apps when Microsoft Edge is closed" setting is on, checks
-  keep running with no Edge window open. They stay invisible either way.
-- **Per-site permissions.** Nothing is read until you grant that specific
-  site, and you can revoke any of them from `edge://extensions` at any time.
-
----
-
-## 7. Files
-
-| Path | What it is |
+| Permission | Why |
 |---|---|
-| `manifest.json` | Extension definition, MV3 |
-| `background.js` | Service worker: schedule, reading, change detection, alerts |
-| `lib/pw-core.js` | Price parsing and selector capture/replay, shared by all three contexts |
-| `picker/picker.js` | The point-and-click overlay, in a shadow root so page CSS cannot break it |
-| `offscreen/` | Parses fetched HTML and hosts the hidden renderer frame |
-| `render/frame.js` | Reads the price inside the hidden frame (active only during a check) |
-| `popup/` | The list, sparklines, target editor |
-| `options/` | Settings, item table, JSON backup |
-| `test/unit.mjs` | Price parsing and selector resilience, under jsdom |
-| `test/e2e.mjs` | Loads the real extension in Chromium and drives the whole flow |
+| Access to a site (asked per site) | To read the price on the pages you track. Nothing is read until you approve a site, and you can revoke it in `edge://extensions` at any time. |
+| `storage` | Saves your items, history, database and settings in the browser. |
+| `alarms` | Runs checks on a schedule. |
+| `notifications` | Price and stock alerts. |
+| `scripting` | Runs the picker on the page when you press the button, and reads the hidden frame. |
+| `offscreen` | The invisible document that parses pages and hosts the hidden frame. |
+| `declarativeNetRequestWithHostAccess` | Lets the hidden frame load shops that normally refuse to be framed. Applies only to frames the extension itself creates, never to your normal tabs. |
+| `tabs` | Reads the current tab's address when you start tracking, and opens a page when you click an alert. |
+| `idle` | Lets the optional background-tab fallback wait until you're away. |
 
----
+## Privacy
 
-## 8. Running the tests (optional)
+Price Watch has no server, no account and no analytics. Your items, price
+history, database and settings live in the browser's local extension storage
+on your computer. The only network requests are to the product pages you
+track, plus Telegram or your webhook if you turn those on. The Telegram token
+and webhook address are never included in exported backups.
 
-Only needed if you change the code.
+## Limits worth knowing
 
-```
+- **The browser must be running.** Extensions can't run when Edge or Chrome is
+  closed. If Edge's *Continue running background extensions and apps when
+  Microsoft Edge is closed* setting is on, checks continue with no window
+  open. After a long break, a catch-up check runs a few minutes after start.
+- **15 minutes is the shortest interval.**
+- **Some sites block automated reading.** Strong bot protection can serve a
+  challenge page. The hidden render often gets through; the background-tab
+  fallback is there for the rest.
+- **Login-only prices** usually work because your cookies are sent, but a site
+  that logs you out often will produce read errors.
+- **Stock detection is best effort.** It relies on what the shop publishes or
+  shows next to the price. When it can't tell, it shows nothing rather than
+  guessing.
+
+## Troubleshooting
+
+| Symptom | Try |
+|---|---|
+| "No permission for ..." | Open the popup, open the item, press **Re-authorise**. |
+| "The element could not be found" | The site changed. Use **Re-pick** on the item. |
+| "Loose match" warning | Same: **Re-pick** to make it reliable. |
+| An item says it failed several times and is checked less often | It recovers by itself once a check works. Re-pick if the site changed. |
+| Telegram test fails | Check the token, send your bot a message, press **Find my chat ID** again, and allow access to `api.telegram.org` when asked. |
+| Nothing happens on schedule | Make sure the browser is running. Check Settings for quiet hours. Paused items are skipped. |
+
+## Development
+
+```bash
+git clone https://github.com/MdAhsanulHimel/price-watch.git
+cd price-watch
 npm install
-node test/unit.mjs
-node test/e2e.mjs
+npx playwright install chromium
+npm run test:unit     # parsing, selectors, stock detection, CSV
+npm run test:e2e      # loads the real extension in Chromium and drives it
+npm run package       # builds dist/price-watch-vX.Y.Z.zip
 ```
 
-The end-to-end test spins up two fake shops on localhost, one server-rendered
-and one JavaScript-rendered that refuses framing, drives the picker with a
-real mouse, drops the prices, and asserts that both reading paths notice
-without a single tab or window being opened.
+The end-to-end test serves fake shops on localhost (one server-rendered, one
+JavaScript-rendered that refuses framing), drives the picker with a real
+mouse, changes prices and stock, and checks alerts, the database, quiet
+hours, backoff, re-pick and that no tab or window is ever opened by a check.
+On Linux without a display, run it under `xvfb-run -a`.
 
----
+```
+manifest.json        Extension definition (Manifest V3)
+background.js        Service worker: schedule, reading, change detection, alerts
+lib/pw-core.js       Price parsing, selectors, stock detection, CSV (shared everywhere)
+picker/picker.js     The point-and-click overlay (shadow DOM)
+offscreen/           Parses fetched HTML and hosts the hidden renderer
+render/frame.js      Reads the price inside the hidden frame (only during a check)
+popup/               The list, sparklines, per-item options
+options/             Settings, database, backup
+test/                Unit tests (jsdom) and end-to-end tests (Playwright)
+scripts/package.mjs  Builds the release zip
+```
 
-## 9. Data and privacy
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and the release process,
+and [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
-Everything stays in Edge's local extension storage on your PC. There is no
-server, no account, no telemetry. **Backup** in the settings page writes a
-JSON file you can carry to another machine. Site permissions are not part of
-that file, so after importing you press **Re-authorise** on each item once.
+## License
+
+[MIT](LICENSE) © 2026 Md Ahsanul Islam

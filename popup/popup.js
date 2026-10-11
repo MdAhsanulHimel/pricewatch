@@ -29,6 +29,17 @@
     return Math.round(h / 24) + " d ago";
   }
 
+  function fmtMinutes(m) {
+    return m >= 1440 ? m / 1440 + " d" : m >= 60 ? m / 60 + " h" : m + " min";
+  }
+
+  function until(ts) {
+    const m = Math.max(1, Math.round((ts - Date.now()) / 60000));
+    if (m < 60) return "in " + m + " min";
+    const h = Math.round(m / 60);
+    return h < 48 ? "in " + h + " h" : "in " + Math.round(h / 24) + " d";
+  }
+
   function sparkline(svg, history) {
     svg.textContent = "";
     const pts = (history || []).slice(-40);
@@ -73,6 +84,12 @@
 
       const price = $(".price", node);
       price.textContent = PW.formatValue(item.lastValue, item.currency);
+      if (item.stock === "in" || item.stock === "out") {
+        const chip = document.createElement("span");
+        chip.className = "stock " + item.stock;
+        chip.textContent = item.stock === "in" ? "In stock" : "Out of stock";
+        price.after(chip);
+      }
 
       const delta = $(".delta", node);
       if (item.lastChanged && item.previousValue !== null && item.previousValue !== undefined) {
@@ -90,6 +107,7 @@
       const bits = [item.host, "checked " + ago(item.lastChecked)];
       if (item.paused) bits.push("paused");
       if (item.mode === "render" || item.mode === "tab") bits.push("rendered");
+      if (item.intervalMinutes) bits.push("every " + fmtMinutes(item.intervalMinutes));
       if (item.target && item.target.enabled) {
         bits.push("target " + (item.target.direction === "above" ? "≥ " : "≤ ") +
           PW.formatValue(item.target.value, item.currency));
@@ -99,13 +117,22 @@
       const err = $(".err", node);
       if (item.error) {
         err.hidden = false;
-        err.textContent = item.error;
+        let text = item.error;
+        if ((item.failCount || 0) >= PW.BACKOFF_AFTER) {
+          const next = PW.nextCheckAt(item, settings);
+          text =
+            "Failed " + item.failCount + " times in a row, so it is checked less often" +
+            (next > Date.now() ? " (next try " + until(next) + ")" : "") +
+            ". Try Re-pick. Last error: " + item.error;
+        }
+        err.textContent = text;
       } else if (item.loose) {
         err.hidden = false;
         err.textContent =
           "The exact element was not found, so this reading was matched by " +
-          "looking for a similar number on the page. Open the page and pick " +
-          "the price again to make it reliable.";
+          "looking for a similar number on the page. Use Re-pick to make it " +
+          "reliable; the history is kept.";
+        err.classList.add("warn");
       }
 
       if (item.lastChanged && Date.now() - item.lastChanged < 36e5) node.classList.add("flash");
@@ -158,6 +185,23 @@
     on.addEventListener("change", saveTarget);
     dir.addEventListener("change", saveTarget);
     val.addEventListener("change", saveTarget);
+
+    const intSel = $(".int-sel", node);
+    intSel.value = item.intervalMinutes ? String(item.intervalMinutes) : "";
+    intSel.addEventListener("change", async () => {
+      await send({
+        type: "updateItem",
+        id: item.id,
+        patch: { intervalMinutes: intSel.value ? parseInt(intSel.value, 10) : null },
+      });
+      await load();
+    });
+
+    $(".act-repick", node).addEventListener("click", () => {
+      // The background opens (or switches to) the page and starts the picker.
+      send({ type: "repick", id: item.id });
+      window.close();
+    });
 
     $(".act-open", node).addEventListener("click", () => {
       chrome.tabs.create({ url: item.url });
@@ -215,6 +259,12 @@
     try {
       await chrome.scripting.executeScript({
         target: { tabId: activeTab.id },
+        func: () => {
+          globalThis.__pwRepick = null; // a normal pick adds a new item
+        },
+      });
+      await chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
         files: ["lib/pw-core.js", "picker/picker.js"],
       });
       window.close(); // get out of the way so the user can click the page
@@ -234,6 +284,19 @@
   }
 
   $("#pick").addEventListener("click", startPicking);
+  $("#csv").addEventListener("click", async () => {
+    const res = await send({ type: "exportCsv" });
+    if (!res || !res.ok) return;
+    downloadText(res.csv, "price-watch-database-" + PW.localDateTime(Date.now()).slice(0, 10) + ".csv");
+  });
+
+  function downloadText(text, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
   $("#openOptions").addEventListener("click", () => chrome.runtime.openOptionsPage());
   $("#checkAll").addEventListener("click", async (e) => {
     e.target.disabled = true;

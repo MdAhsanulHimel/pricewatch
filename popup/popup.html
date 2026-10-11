@@ -13,6 +13,7 @@
     </div>
     <div class="hactions">
       <button id="checkAll" class="ghost" title="Check every item now">Check all</button>
+      <button id="csv" class="icon" title="Download the price database (CSV)">&#8681;</button>
       <button id="openOptions" class="icon" title="Settings">&#9881;</button>
     </div>
   </header>
@@ -56,8 +57,22 @@
           </select>
           <input type="number" class="tgt-val" step="any" placeholder="value">
         </div>
+        <div class="targetrow">
+          <label>Check every</label>
+          <select class="int-sel">
+            <option value="">default</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 hour</option>
+            <option value="180">3 hours</option>
+            <option value="360">6 hours</option>
+            <option value="720">12 hours</option>
+            <option value="1440">1 day</option>
+          </select>
+        </div>
         <div class="drawer-actions">
           <button class="ghost act-check">Check now</button>
+          <button class="ghost act-repick" title="Pick the price again on the page. History is kept.">Re-pick</button>
           <button class="ghost act-open">Open page</button>
           <button class="ghost act-pause">Pause</button>
           <button class="ghost act-reauth" hidden>Re-authorise</button>

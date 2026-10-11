@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Price Watch",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Point at a price on any website and get a notification when it changes.",
   "minimum_chrome_version": "116",
   "icons": {

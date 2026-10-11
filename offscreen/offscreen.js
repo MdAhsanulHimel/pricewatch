@@ -72,7 +72,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "parse") {
     try {
       const doc = new DOMParser().parseFromString(msg.html, "text/html");
-      sendResponse(globalThis.PW.resolve(doc, msg.selectors));
+      sendResponse(globalThis.PW.read(doc, msg.selectors));
     } catch (e) {
       sendResponse({ ok: false, reason: "Parse failed: " + e.message });
     }

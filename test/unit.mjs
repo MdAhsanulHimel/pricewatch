@@ -145,7 +145,49 @@ r = PW.resolve(loose, sel);
 eq("loose match is used but marked", [r.ok, r.value, r.loose], [true, 2200, true]);
 eq("structural matches are not marked loose", PW.resolve(changed, sel).loose, false);
 
-console.log("\n5. helpers");
+console.log("\n5. stock status");
+const stOut = docFrom(st.documentElement.outerHTML.replace(">In Stock<", ">Out Of Stock<"));
+eq("star tech in stock (text near price)", PW.detectStock(st, st.querySelector("td.product-price ins")).stock, "in");
+eq("star tech out of stock", PW.detectStock(stOut, stOut.querySelector("td.product-price ins")).stock, "out");
+const ld = docFrom(`<!doctype html><head><script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Product","name":"X",
+   "offers":{"@type":"Offer","price":"10","availability":"https://schema.org/OutOfStock"}}
+  </script></head><body><h1>X</h1><span class="p">10৳</span> In stock</body>`);
+eq("json-ld beats page text", [PW.detectStock(ld, null).stock, PW.detectStock(ld, null).stockBy], ["out", "json-ld"]);
+const brokenLd = docFrom(`<!doctype html><head><script type="application/ld+json">{oops</script></head>
+  <body><div><h1>X</h1><button>Add to cart</button></div></body>`);
+eq("broken json-ld ignored, button text used", PW.detectStock(brokenLd, null).stock, "in");
+const itemprop = docFrom(`<!doctype html><body><div><link itemprop="availability" href="http://schema.org/InStock"><span>5$</span></div></body>`);
+eq("itemprop availability", PW.detectStock(itemprop, null).stock, "in");
+const bangla = docFrom(`<!doctype html><body><div class="box"><h1>পণ্য</h1><span>৳১,২০০</span><p>স্টকে নেই</p></div></body>`);
+eq("bangla out of stock", PW.detectStock(bangla, bangla.querySelector("span")).stock, "out");
+const nothing = docFrom(`<!doctype html><body><div><span>5$</span></div></body>`);
+eq("unknown when nothing says", PW.detectStock(nothing, nothing.querySelector("span")).stock, "");
+const notAvail = docFrom(`<!doctype html><body><div><span>5$</span> Not available</div></body>`);
+eq("'not available' is out, never in", PW.detectStock(notAvail, notAvail.querySelector("span")).stock, "out");
+
+// Shop hides the price entirely when the product is out of stock.
+const hidden = docFrom(`<!doctype html><body><div class="product-short-info">
+  <h1 class="product-name">Lenovo IdeaPad 1 15AMN7</h1>
+  <table class="product-info-table"><tbody><tr><td>Status</td><td>Out Of Stock</td></tr></tbody></table></div></body>`);
+r = PW.read(hidden, stSel);
+eq("price hidden + out of stock is a valid reading", [r.ok, r.value, r.stock], [true, null, "out"]);
+r = PW.read(stLater, stSel);
+eq("read() returns price and stock together", [r.ok, r.value, r.stock], [true, 74500, "in"]);
+eq("read() result has no DOM node in it", "el" in r, false);
+
+console.log("\n6. price database CSV");
+const csv = PW.logToCsv([
+  { name: 'Laptop 15", "Pro"', url: "https://x.com/a?b=1,2", t: new Date(2026, 9, 11, 9, 5).getTime(), price: 74500, stock: "in" },
+  { name: "মাউস", url: "https://x.com/m", t: new Date(2026, 9, 12, 18, 30).getTime(), price: null, stock: "out" },
+]);
+const lines = csv.replace(/^﻿/, "").trim().split("\r\n");
+eq("starts with BOM for Excel", csv.charCodeAt(0), 0xfeff);
+eq("header", lines[0], "Product name,Product Link,Date,Price,Stock");
+eq("quotes and commas escaped", lines[1], '"Laptop 15"", ""Pro""","https://x.com/a?b=1,2",2026-10-11 09:05,74500,In stock');
+eq("empty price when hidden, Bangla kept", lines[2], "মাউস,https://x.com/m,2026-10-12 18:30,,Out of stock");
+
+console.log("\n7. helpers");
 eq("origin", PW.originOf("https://www.startech.com.bd/x/y?z=1"), "https://www.startech.com.bd");
 eq("host strips www", PW.hostOf("https://www.startech.com.bd/x"), "startech.com.bd");
 

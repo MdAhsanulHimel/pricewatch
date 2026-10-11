@@ -4,37 +4,47 @@
 <meta charset="utf-8">
 <title>Price Watch settings</title>
 <style>
-  :root { --ink:#16233a; --muted:#66788f; --line:#e3e9f0; --accent:#12b886; --chip:#eef2f7; }
+  :root { --ink:#16233a; --muted:#66788f; --line:#e3e9f0; --accent:#12b886; --chip:#eef2f7; --bad:#b4451f; --good:#0b7a4b; }
   * { box-sizing: border-box; }
   body {
     font: 14px/1.6 "Segoe UI", system-ui, sans-serif; color: var(--ink);
-    max-width: 720px; margin: 0 auto; padding: 28px 22px 60px;
+    max-width: 760px; margin: 0 auto; padding: 28px 22px 60px;
   }
   h1 { font-size: 20px; margin: 0 0 4px; }
   .sub { color: var(--muted); margin: 0 0 26px; }
   section { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; }
   h2 { font-size: 15px; margin: 0 0 12px; }
+  h3 { font-size: 13.5px; margin: 16px 0 8px; }
   .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
   .row:last-child { margin-bottom: 0; }
   label.inline { display: flex; align-items: center; gap: 8px; }
-  select, input[type=number] {
+  select, input[type=number], input[type=text], input[type=url], input[type=time], input[type=password] {
     font: inherit; padding: 6px 9px; border: 1px solid #c9d4e2; border-radius: 6px;
   }
+  input.wide { flex: 1; min-width: 260px; }
   button {
     font: inherit; border: 0; border-radius: 7px; padding: 8px 14px;
     cursor: pointer; background: var(--chip); color: #33465e;
   }
   button.primary { background: var(--accent); color: #fff; }
+  button.danger { color: var(--bad); }
   .hint { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
-  .ok { color: #0b7a4b; font-size: 13px; margin-left: 8px; }
+  .ok { color: var(--good); font-size: 13px; margin-left: 8px; }
+  .status { font-size: 12.5px; }
+  .status.good { color: var(--good); }
+  .status.bad { color: var(--bad); }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
   th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
   th { color: var(--muted); font-weight: 600; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  code { background: var(--chip); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  ol.steps { margin: 6px 0 10px 18px; padding: 0; color: var(--muted); font-size: 12.5px; }
   @media (prefers-color-scheme: dark) {
-    :root { --ink:#e6edf3; --muted:#8b98a9; --line:#2a323d; --chip:#232b36; }
+    :root { --ink:#e6edf3; --muted:#8b98a9; --line:#2a323d; --chip:#232b36; --bad:#f0836a; --good:#3fb950; }
     body { background: #161b22; }
-    select, input[type=number] { background:#1f262f; color:var(--ink); border-color:#39424f; }
+    select, input[type=number], input[type=text], input[type=url], input[type=time], input[type=password] {
+      background:#1f262f; color:var(--ink); border-color:#39424f;
+    }
     button { color:#cbd6e2; }
   }
 </style>
@@ -59,23 +69,90 @@
       </label>
     </div>
     <p class="hint">
-      Edge enforces a 15 minute floor on extension timers. If the browser was
-      closed for longer than one interval, a catch-up check runs shortly after
-      you next start it.
+      This is the default. Any item can have its own interval (open its menu in
+      the popup). A page that fails three times in a row is checked less and
+      less often, up to once a day, until it works again; after six failures
+      you get one alert asking you to re-pick it. If the browser was closed for
+      longer than one interval, a catch-up check runs a few minutes after you
+      next start it.
     </p>
   </section>
 
   <section>
     <h2>Alerts</h2>
-    <div class="row"><label class="inline"><input type="checkbox" id="notify"> Windows notification when a value changes</label></div>
+    <div class="row"><label class="inline"><input type="checkbox" id="notify"> Windows notification for price and stock changes</label></div>
     <div class="row"><label class="inline"><input type="checkbox" id="sound"> Play a sound with notifications</label></div>
     <div class="row"><label class="inline"><input type="checkbox" id="badge"> Count of unseen changes on the toolbar icon</label></div>
+
+    <h3>Which changes are worth an alert</h3>
+    <div class="row">
+      <label class="inline">Alert me about
+        <select id="alertMode">
+          <option value="all">all price changes</option>
+          <option value="drops">price drops only</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label class="inline">Ignore moves smaller than
+        <input type="number" id="minChangePct" min="0" max="90" step="0.5" style="width:80px"> %
+      </label>
+    </div>
+    <div class="row"><label class="inline"><input type="checkbox" id="notifyStock"> Alert when an item goes out of stock or comes back</label></div>
+    <p class="hint">
+      Target alerts (set per item) always fire. Ignored changes are still
+      recorded in the history and the price database.
+    </p>
+
+    <h3>Quiet hours</h3>
+    <div class="row">
+      <label class="inline"><input type="checkbox" id="quietOn"> Hold alerts from</label>
+      <input type="time" id="quietStart"> to <input type="time" id="quietEnd">
+    </div>
+    <p class="hint">Alerts that happen during quiet hours are sent as one summary when they end. Applies to Windows, Telegram and webhook alerts.</p>
+
     <div class="row">
       <label class="inline">Keep
         <input type="number" id="historyLimit" min="20" max="2000" step="10" style="width:90px">
-        readings of history per item
+        readings of history per item (for the sparkline)
       </label>
     </div>
+  </section>
+
+  <section>
+    <h2>Phone and chat alerts</h2>
+
+    <h3>Telegram</h3>
+    <div class="row"><label class="inline"><input type="checkbox" id="tgOn"> Send alerts to Telegram</label></div>
+    <ol class="steps">
+      <li>In Telegram, message <code>@BotFather</code>, send <code>/newbot</code> and copy the token it gives you.</li>
+      <li>Open your new bot and send it any message, for example <code>hi</code>.</li>
+      <li>Paste the token below and press <b>Find my chat ID</b>.</li>
+    </ol>
+    <div class="row">
+      <input type="password" id="tgToken" class="wide" placeholder="Bot token, like 123456789:AAE..." autocomplete="off">
+    </div>
+    <div class="row">
+      <input type="text" id="tgChat" placeholder="Chat ID" style="width:180px">
+      <button id="tgFind">Find my chat ID</button>
+      <button id="tgTest">Send test</button>
+      <span class="status" id="tgStatus"></span>
+    </div>
+
+    <h3>Webhook</h3>
+    <div class="row"><label class="inline"><input type="checkbox" id="hookOn"> POST alerts to a webhook</label></div>
+    <div class="row">
+      <input type="url" id="hookUrl" class="wide" placeholder="https://...">
+      <button id="hookTest">Send test</button>
+      <span class="status" id="hookStatus"></span>
+    </div>
+    <p class="hint">
+      Sends JSON with <code>text</code> (Slack), <code>content</code> (Discord)
+      and an <code>events</code> list with product, url, old and new price,
+      currency and stock. Works with Discord, Slack, ntfy, Home Assistant,
+      n8n, Zapier and similar. The token and webhook address stay on this PC
+      and are left out of backups.
+    </p>
   </section>
 
   <section>
@@ -92,9 +169,24 @@
   </section>
 
   <section>
+    <h2>Price database</h2>
+    <p class="hint" style="margin-top:0">
+      A row is added only when something happens: the first reading of an
+      item, a price change, or a switch between in stock and out of stock.
+      Columns: Product name, Product Link, Date, Price, Stock. Opens in Excel
+      or Google Sheets.
+    </p>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="csvDownload">Download CSV</button>
+      <button class="danger" id="csvClear">Clear database</button>
+      <span class="status" id="csvCount"></span>
+    </div>
+  </section>
+
+  <section>
     <h2>Your items</h2>
     <table id="items"><thead>
-      <tr><th>Item</th><th>Site</th><th class="num">Current</th><th>Mode</th><th class="num">Readings</th></tr>
+      <tr><th>Item</th><th>Site</th><th class="num">Current</th><th>Stock</th><th>Mode</th><th>Every</th><th class="num">Readings</th></tr>
     </thead><tbody></tbody></table>
     <p class="hint" id="noitems" hidden>Nothing tracked yet.</p>
   </section>
@@ -108,9 +200,11 @@
       <span class="ok" id="msg"></span>
     </div>
     <p class="hint">
-      Import replaces your current list. Site permissions are not part of the
-      backup, so after importing on a new PC, open the popup and press
-      Re-authorise on each item.
+      The backup holds your items, their history, the price database and your
+      settings (without the Telegram token and webhook address). Import
+      replaces your current list. Site permissions are not part of the backup,
+      so after importing on a new PC, open the popup and press Re-authorise on
+      each item.
     </p>
   </section>
 

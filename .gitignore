@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output (npm run package)
+dist/
+*.zip
+
+# Test artefacts
+test/output/
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log
